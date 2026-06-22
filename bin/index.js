@@ -16,7 +16,7 @@ program
     .description('创建一个新的 Nova Admin 后台管理项目')
     .action(async (projectName) => {
 
-        // 1. 收集用户输入与选择
+        // 收集用户输入与选择
         const prompts = [];
 
         if (!projectName) {
@@ -48,7 +48,7 @@ program
 
         const targetDir = path.join(process.cwd(), projectName);
 
-        // 2. 检查当前目录下是否已有同名文件夹
+        // 检查当前目录下是否已有同名文件夹
         if (fs.existsSync(targetDir)) {
             console.log(chalk.red(`\n❌ 错误：目录 "${projectName}" 已存在，请换个名字或先手动删除它。`));
             return;
@@ -57,10 +57,9 @@ program
         console.log(chalk.blue(`\n🚀 开始构建你的 Nova Admin...`));
         console.log(chalk.gray(`技术栈配置: Vue3, Element Plus, TypeScript, Pinia, Vue Router\n`));
 
-        // 3. 配置你的 Git 仓库地址
-        // 💡 请替换为你真正的 vue-admin 模版 Git 地址（建议直接用 https 链接）
+        // 配置你的 Git 仓库地址
         // 格式: 'direct:https://xxx.git#分支名'
-        let templateRepo = 'direct:https://github.com';
+        let templateRepo = 'direct:https://github.com/ni9542/nova-admin-template.git#main';
 
         // 如果以后有其他分支，可以根据用户选择切换地址：
         // if (answers.template === 'ant-design-ts') { templateRepo = '...' }
