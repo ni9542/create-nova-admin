@@ -11,9 +11,9 @@ import fs from 'fs';
 const program = new Command();
 
 program
-    .version('1.0.0')
+    .version('1.0.2')
     .arguments('[project-name]')
-    .description('创建一个新的 Pomelo Admin 后台管理项目')
+    .description('创建一个新的 Nova Admin 后台管理项目')
     .action(async (projectName) => {
 
         const prompts = [];
@@ -23,7 +23,7 @@ program
                 type: 'input',
                 name: 'name',
                 message: '✨ 请输入你的后台项目名称:',
-                default: 'pomelo-admin-app',
+                default: 'nova-admin-app',
             });
         }
 
@@ -49,10 +49,10 @@ program
             return;
         }
 
-        console.log(chalk.blue(`\n🚀 开始构建你的 Pomelo Admin...`));
+        console.log(chalk.blue(`\n🚀 开始构建你的 Nova Admin...`));
         console.log(chalk.gray(`技术栈配置: Vue3, Element Plus, TypeScript, Pinia, Vue Router\n`));
 
-        const spinner = ora('正在从云端拉取最新 Pomelo Admin 模版...').start();
+        const spinner = ora('正在从云端拉取最新 Nova Admin 模版...').start();
 
         try {
             // giget 格式非常简单直接：github:用户名/仓库名#分支
@@ -70,7 +70,7 @@ program
                 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), 'utf-8');
             }
 
-            console.log('\n' + chalk.bold.green(`🎉 恭喜！你的 Pomelo Admin 项目已初始化完成！`));
+            console.log('\n' + chalk.bold.green(`Nova Admin 项目已初始化完成！`));
             console.log(`\n请依次执行以下命令启动项目：\n`);
             console.log(chalk.cyan(`  cd ${projectName}`));
             console.log(chalk.cyan(`  npm install`));

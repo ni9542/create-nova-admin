@@ -1,17 +1,17 @@
 {
-  "name": "@niping9542/create-pomelo-admin",
+  "name": "@niping9542/create-nova-admin",
   "version": "1.0.1",
-  "description": "Pomelo Admin 现代化后台管理系统快速生成工具",
+  "description": "Nova Admin 现代化后台管理系统快速生成工具",
   "type": "module",
   "bin": {
-    "create-pomelo-admin": "./bin/index.js"
+    "create-pomelo-admin": "bin/index.js"
   },
   "keywords": [
     "vue",
     "admin",
     "cli",
     "scaffolding",
-    "pomelo"
+    "nova"
   ],
   "publishConfig": {
     "access": "public"
