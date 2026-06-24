@@ -1,6 +1,6 @@
 {
   "name": "@niping9542/create-nova-admin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Nova Admin 现代化后台管理系统快速生成工具",
   "type": "module",
   "bin": {
