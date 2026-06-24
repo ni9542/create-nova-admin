@@ -1,6 +1,6 @@
 {
   "name": "@niping9542/create-pomelo-admin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pomelo Admin 现代化后台管理系统快速生成工具",
   "type": "module",
   "bin": {
