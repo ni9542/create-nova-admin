@@ -1,26 +1,28 @@
 {
-  "name": "create-nova-admin",
+  "name": "@niping9542/create-pomelo-admin",
   "version": "1.0.0",
-  "description": "Nova Admin 现代化后台管理系统快速生成工具",
-  "main": "index.js",
+  "description": "Pomelo Admin 现代化后台管理系统快速生成工具",
   "type": "module",
   "bin": {
-    "create-nova-admin": "./bin/index.js"
+    "create-pomelo-admin": "./bin/index.js"
   },
   "keywords": [
     "vue",
     "admin",
     "cli",
     "scaffolding",
-    "nova"
+    "pomelo"
   ],
-  "author": "",
-  "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "niping9542",
+  "license": "MIT",
   "dependencies": {
-    "chalk": "^5.6.2",
-    "commander": "^15.0.0",
-    "download-git-repo": "^3.0.2",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "giget": "^3.3.0",
     "inquirer": "^14.0.2",
-    "ora": "^9.4.0"
+    "ora": "^8.0.1"
   }
 }
