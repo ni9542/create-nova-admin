@@ -1,10 +1,10 @@
 {
   "name": "@niping9542/create-nova-admin",
   "version": "1.0.2",
-  "description": "Nova Admin 现代化后台管理系统快速生成工具",
+  "description": "Npora Admin 后台脚手架生成器：核心模式、独立展示与正式权限 SQL",
   "type": "module",
   "bin": {
-    "create-pomelo-admin": "bin/index.js"
+    "create-nova-admin": "bin/index.js"
   },
   "keywords": [
     "vue",
@@ -22,7 +22,18 @@
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "giget": "^3.3.0",
-    "inquirer": "^14.0.2",
     "ora": "^8.0.1"
-  }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "test": "node --test tests/cli.test.mjs tests/create-project.test.mjs",
+    "check": "node --check bin/index.js && node --check src/create-project.js && npm test"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md"
+  ]
 }
