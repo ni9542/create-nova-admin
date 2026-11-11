@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm pack --dry-run
+
+  templates:
+    runs-on: ubuntu-latest
+    needs: check
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        manager: [npm, pnpm]
+    defaults:
+      run:
+        working-directory: admin-template
+    steps:
+      - name: Check out this generator revision
+        uses: actions/checkout@v4
+        with:
+          path: create-nova-admin
+          persist-credentials: false
+      - name: Check out the current template
+        uses: actions/checkout@v4
+        with:
+          repository: npora/admin-template
+          ref: main
+          path: admin-template
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: admin-template/pnpm-lock.yaml
+      - name: Install generator dependencies
+        run: npm ci --prefix ../create-nova-admin
+      - name: Install template dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate, install and check all three presets
+        run: node scripts/check-presets.mjs ../create-nova-admin --install --manager=${{ matrix.manager }}

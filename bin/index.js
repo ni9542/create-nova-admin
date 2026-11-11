@@ -83,16 +83,20 @@ program
         )
       );
       console.log(
-        `\n  cd ${project.projectName}\n  pnpm install\n  ${project.startCommand}\n`
+        `\n  cd ${project.projectName}\n  npm install\n  ${project.startCommand}\n`
       );
-      console.log(`包管理器版本：${project.packageManager}`);
+      console.log(
+        '命令以 npm 为例，也可以使用 pnpm 或 Yarn；不限制包管理器版本。'
+      );
       if (project.demo)
         console.log('展示需要网络。演示账号：admin，密码：123456。');
       else
         console.log(
           '请先启动自己的后端，或修改 .env.development.local 中的 VITE_API_URL。'
         );
-      console.log('正式权限 SQL：database/mysql/01-schema.sql → 02-seed.sql。');
+      console.log(
+        '正式权限 SQL：database/mysql/01-schema.sql → 02-seed.sql → 03-dictionaries.sql → 04-query-indexes.sql。'
+      );
       if (project.preset === 'worker')
         console.log(
           '后端源码：workers/api/；先迁移数据库并初始化账号，再配置自己的 API 地址。'

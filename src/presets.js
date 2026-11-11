@@ -25,6 +25,7 @@ const removeCore = [
   'build/optional-examples.ts',
   'src/types/examples.d.ts',
   'scripts/demo.mjs',
+  'scripts/lib',
   'scripts/check-backend.mjs',
   'scripts/check-standalone.mjs'
 ];
@@ -41,7 +42,7 @@ export async function composePreset(directory, preset, original) {
       .digest('hex');
     if (metadata.version !== 1 || metadata.sourceLockHash !== sourceLockHash)
       throw new Error(
-        '模板的纯净版锁文件快照已过期，请维护者运行 pnpm run update:presets。'
+        '模板的纯净版锁文件快照已过期，请维护者运行 npm run update:presets。'
       );
     const core = JSON.parse(
       await readFile(path.join(overlays, 'core/package.json'), 'utf8')
@@ -55,13 +56,12 @@ export async function composePreset(directory, preset, original) {
     if (
       !equal(core.dependencies, original.dependencies) ||
       !equal(core.devDependencies, expected) ||
-      core.packageManager !== original.packageManager ||
       Object.entries(core.scripts).some(
         ([key, value]) => value !== original.scripts[key]
       )
     )
       throw new Error(
-        '模板的纯净版依赖快照已过期，请维护者运行 pnpm run update:presets。'
+        '模板的纯净版依赖快照已过期，请维护者运行 npm run update:presets。'
       );
     for (const entry of removeCore)
       await rm(path.join(directory, entry), { recursive: true, force: true });
@@ -96,14 +96,14 @@ export async function composePreset(directory, preset, original) {
         force: true
       });
       core.scripts['check:backend'] =
-        'pnpm --dir workers/api run build && pnpm --dir workers/api test';
+        'node workers/api/scripts/build.mjs && node scripts/run-tests.mjs --backend';
       await writeFile(
         path.join(directory, 'package.json'),
         JSON.stringify(core, null, 2) + '\n'
       );
       await writeFile(
         path.join(directory, 'README.md'),
-        '\n## 已选择 Worker 后端\n\n项目包含 `workers/api/`，使用前先完成数据库迁移和账号初始化，再配置自己的 API 地址。`pnpm run check:backend` 检查后端。见 [后端说明](workers/api/README.md)。\n',
+        '\n## 已选择 Worker 后端\n\n项目包含 `workers/api/`，使用前先完成数据库迁移和账号初始化，再配置自己的 API 地址。`npm run check:backend` 检查后端。见 [后端说明](workers/api/README.md)。\n',
         { flag: 'a' }
       );
     }
@@ -114,6 +114,7 @@ export async function composePreset(directory, preset, original) {
       force: true
     });
   for (const entry of [
+    '.github/workflows/presets.yml',
     'scripts/update-presets.mjs',
     'scripts/check-presets.mjs'
   ]) {
@@ -123,6 +124,7 @@ export async function composePreset(directory, preset, original) {
   const pkg = JSON.parse(
     await readFile(path.join(directory, 'package.json'), 'utf8')
   );
+  delete pkg.packageManager;
   delete pkg.scripts['update:presets'];
   delete pkg.scripts['check:presets'];
   await writeFile(

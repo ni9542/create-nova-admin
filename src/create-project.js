@@ -4,6 +4,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   writeFile
 } from 'node:fs/promises';
@@ -52,6 +53,7 @@ export function normalizeApiURL(value) {
 
 const excluded = new Set([
   '.git',
+  'AGENTS.md',
   '.agents',
   '.codex',
   '.aws',
@@ -67,8 +69,12 @@ const excluded = new Set([
   'report.html'
 ]);
 
-async function copyTemplate(source, destination) {
-  await cp(source, destination, {
+async function copyTemplate(
+  source,
+  destination,
+  { contentsOnly = false } = {}
+) {
+  const options = {
     recursive: true,
     force: false,
     errorOnExist: true,
@@ -81,7 +87,20 @@ async function copyTemplate(source, destination) {
         !(await lstat(entry)).isSymbolicLink()
       );
     }
-  });
+  };
+  if (contentsOnly) {
+    // The caller exclusively created the target. Copy new children without
+    // asking fs.cp to merge the existing root (which fails on Node 24).
+    for (const entry of await readdir(source)) {
+      await cp(
+        path.join(source, entry),
+        path.join(destination, entry),
+        options
+      );
+    }
+  } else {
+    await cp(source, destination, options);
+  }
 }
 
 async function validateTemplate(directory) {
@@ -113,12 +132,8 @@ async function validateTemplate(directory) {
   const pkg = JSON.parse(
     await readFile(path.join(directory, 'package.json'), 'utf8')
   );
-  if (
-    !pkg.scripts?.dev ||
-    !pkg.scripts?.['dev:demo'] ||
-    !pkg.packageManager?.startsWith('pnpm@')
-  ) {
-    throw new Error('模板缺少当前 pnpm 开发或展示命令。');
+  if (!pkg.scripts?.dev || !pkg.scripts?.['dev:demo']) {
+    throw new Error('模板缺少当前开发或展示命令。');
   }
   return pkg;
 }
@@ -205,7 +220,7 @@ export async function createProject({
     // 独占创建目标：下载期间出现同名目录时也不覆盖。
     await mkdir(target);
     created = true;
-    await copyTemplate(prepared, target);
+    await copyTemplate(prepared, target, { contentsOnly: true });
     // 本机环境只由生成器写入，不从模板源继承。
     await writeFile(path.join(target, '.env.development.local'), config, {
       mode: 0o600
@@ -216,8 +231,7 @@ export async function createProject({
       demo,
       preset: selected,
       presetLabel: PRESETS[selected],
-      startCommand: demo && !backend ? 'pnpm dev:demo' : 'pnpm dev',
-      packageManager: pkg.packageManager
+      startCommand: demo && !backend ? 'npm run dev:demo' : 'npm run dev'
     };
   } catch (error) {
     if (created) await rm(target, { recursive: true, force: true });

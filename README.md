@@ -18,7 +18,7 @@ npm 包名：`@niping9542/create-nova-admin`；[生成器源码](https://github.
 
 - 创建项目和开发前端：Node.js 22.12.0 或更高版本。
 - 检查 Worker 后端：Node.js 22.13.0 或更高版本。
-- 生成项目后，使用其 `package.json` 中 `packageManager` 指定的 pnpm 版本。
+- 生成项目不指定 `packageManager`，可使用 npm、pnpm 或 Yarn。以下以 npm 为例；pnpm 锁文件仅供选择 pnpm 的使用者使用，其他工具会生成自己的锁文件，无需先删除 pnpm 配置。生成器自身使用 npm 锁文件维护依赖，与生成项目使用哪种包管理器无关。
 - 在线创建需要能够访问 npm 和 GitHub；完整演示的默认测试 API 也需要网络。
 
 ## 创建项目
@@ -61,8 +61,8 @@ npx @niping9542/create-nova-admin@latest
 ```sh
 npx @niping9542/create-nova-admin@latest my-admin --preset starter
 cd my-admin
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 开发地址默认 `http://localhost:3000`，端口被占用时以终端打印的地址为准。登录页面可以正常打开；完成真实登录并进入首页，需要可用的后端认证接口。
@@ -72,21 +72,21 @@ pnpm dev
 ```sh
 npx @niping9542/create-nova-admin@latest my-worker --preset worker
 cd my-worker
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 该预设在纯净版基础上增加 `workers/api/`，后端菜单仅引用核心页面。按生成项目中的 `workers/api/README.md` 完成数据库迁移、密钥与账号初始化，并配置可访问的后端地址。
 
-`pnpm dev` 只启动前端，不会自动启动或部署 Worker。根目录的 `pnpm run check:backend` 用于检查后端构建与测试。
+`npm run dev` 只启动前端，不会自动启动或部署 Worker。根目录的 `npm run check:backend` 用于检查后端构建与测试。
 
 ### 创建完整演示
 
 ```sh
 npx @niping9542/create-nova-admin@latest my-demo --preset demo
 cd my-demo
-pnpm install
-pnpm dev:demo
+npm install
+npm run dev:demo
 ```
 
 兼容快捷选项：
@@ -115,7 +115,7 @@ VITE_API_URL=https://api.example.com
 
 前端 API 定义位于生成项目的 `src/api/`，接口契约见其中的 `docs/api.md`；后端响应格式有差异时，集中调整 `src/api/protocol/`。
 
-完整演示指定自定义 API 后，生成器会写入接口地址并启用演示页面，此时使用打印的 `pnpm dev` 命令启动：
+完整演示指定自定义 API 后，生成器会写入接口地址并启用演示页面，此时使用打印的 `npm run dev` 命令启动：
 
 ```sh
 npx @niping9542/create-nova-admin@latest my-demo --preset demo --api-url https://api.example.com
@@ -153,17 +153,17 @@ npx @niping9542/create-nova-admin@latest my-demo --preset demo --api-url https:/
 
 在生成的后台项目根目录执行：
 
-| 命令                      | 用途                                   | 包含的预设       |
-| ------------------------- | -------------------------------------- | ---------------- |
-| `pnpm dev`                | 启动前端，按所选预设与本机配置加载页面 | 全部             |
-| `pnpm build`              | 类型检查并构建到 `dist/`               | 全部             |
-| `pnpm preview`            | 预览构建产物，API 转发仍需自行提供     | 全部             |
-| `pnpm run check`          | 格式、类型与核心回归检查               | 全部             |
-| `pnpm run check:backend`  | 后端构建与回归检查                     | `worker`、`demo` |
-| `pnpm dev:demo`           | 启动完整演示，默认连接测试 API         | `demo`           |
-| `pnpm build:demo`         | 类型检查并构建完整演示                 | `demo`           |
-| `pnpm run check:examples` | 示例页面与路由检查                     | `demo`           |
-| `pnpm run check:all`      | 完整演示仓库回归检查                   | `demo`           |
+| 命令                     | 用途                                   | 包含的预设       |
+| ------------------------ | -------------------------------------- | ---------------- |
+| `npm run dev`            | 启动前端，按所选预设与本机配置加载页面 | 全部             |
+| `npm run build`          | 类型检查并构建到 `dist/`               | 全部             |
+| `npm run preview`        | 预览构建产物，API 转发仍需自行提供     | 全部             |
+| `npm run check`          | 格式、类型与核心回归检查               | 全部             |
+| `npm run check:backend`  | 后端构建与回归检查                     | `worker`、`demo` |
+| `npm run dev:demo`       | 启动完整演示，默认连接测试 API         | `demo`           |
+| `npm run build:demo`     | 类型检查并构建完整演示                 | `demo`           |
+| `npm run check:examples` | 示例页面与路由检查                     | `demo`           |
+| `npm run check:all`      | 完整演示仓库回归检查                   | `demo`           |
 
 ## 命令行选项
 
@@ -227,11 +227,21 @@ node bin/index.js local-admin --yes --preset starter --template-dir ../admin-tem
 
 本地模板也必须是包含当前预设差异文件的完整模板仓库。
 
+### 自动检查
+
+每次推送或提交 PR，GitHub Actions 会在 Node.js 22、24 上运行生成器检查和 npm 打包预览，并联合 `admin-template` 的 `main` 分支创建三个真实项目。三个预设分别使用 npm、pnpm 独立安装依赖并执行实际脚本，验证页面、文档链接、类型、回归和生产构建；pnpm 验证模板锁文件，Worker 版同时检查后端。CI 中的 pnpm 版本只用于维护验收，不写入生成项目，也不限制使用者选择工具。
+
+后台模板仓库也会用自身改动验证生成器的 `main` 分支，因此修改任意一边都能检查两者是否兼容。首次启用时，先推送生成器的配套改动，再推送 `admin-template`，让模板端使用到已经支持新检查流程的生成器。
+
+这些工作流只有检查权限，不发布 npm，也不部署网站。生成项目保留应用检查流程，跨仓库维护流程不会复制进去。
+
 ### 更新模板与发布
+
+本次配套版本允许模板不再提供 `packageManager` 字段。更新时需要同步推送两个仓库，并手动发布包含兼容修改的生成器新版本；旧生成器仍会校验 pnpm 字段，不能只更新模板仓库。
 
 - 只修改后台页面或公共组件时，提交并推送 `admin-template` 的模板分支；之后新创建的项目会获取对应分支内容，已经生成的项目不会自动更新。
 - 修改生成器逻辑或本仓库 README 后，需要发布新的 npm 版本，才能更新 npm 用户拿到的生成器及包说明。
-- 修改模板依赖或核心命令后，在 `admin-template` 执行 `pnpm run update:presets`，同步并提交纯净版依赖和锁文件快照。
+- 修改模板依赖或核心命令后，在 `admin-template` 执行 `npm run update:presets`，同步并提交纯净版依赖和锁文件快照。
 
 生成器采用手动发布。在本仓库执行：
 

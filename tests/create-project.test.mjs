@@ -29,7 +29,6 @@ async function fixture(t) {
     'package.json': JSON.stringify({
       name: 'template',
       private: true,
-      packageManager: 'pnpm@12.3.4',
       scripts: {
         dev: 'vite',
         'dev:demo': 'node scripts/demo.mjs',
@@ -38,10 +37,12 @@ async function fixture(t) {
       }
     }),
     'src/main.ts': 'export {};',
+    'AGENTS.md': '# Local-only assistant instructions',
     'database/mysql/01-schema.sql': 'CREATE TABLE sys_user (id INT);',
     'database/mysql/02-seed.sql': '-- Basic permissions',
     'build/optional-examples.ts': 'export {};',
     'scripts/demo.mjs': '// Showcase launcher',
+    'scripts/lib/vite.mjs': '// Showcase-only Vite launcher',
     'examples/index.ts': 'export {};',
     'workers/api/src/index.mjs': '// Optional backend',
     'public/favicon.svg': '<svg />',
@@ -53,6 +54,8 @@ async function fixture(t) {
         .digest('hex')
     }),
     'docs/api.md': '# API',
+    '.github/workflows/presets.yml': '# Maintainer integration only',
+    'scaffold/core/.github/workflows/ci.yml': '# Application CI',
     'scaffold/demo/README.md': '# Full demo',
     'docs/examples.md': '# Examples',
     'deploy/cloudflare/index.mjs': '// deploy',
@@ -60,7 +63,6 @@ async function fixture(t) {
     'scaffold/core/package.json': JSON.stringify({
       name: 'template',
       private: true,
-      packageManager: 'pnpm@12.3.4',
       scripts: { dev: 'vite' }
     }),
     'scaffold/core/pnpm-lock.yaml': 'lockfileVersion: 9.0',
@@ -101,8 +103,8 @@ test('starter creation preserves SQL and excludes optional modules, excludes per
   const pkg = JSON.parse(await readFile(path.join(target, 'package.json')));
   assert.equal(pkg.name, 'my-admin');
   assert.equal(pkg.private, true);
-  assert.equal(pkg.packageManager, 'pnpm@12.3.4');
-  assert.equal(result.startCommand, 'pnpm dev');
+  assert.equal(pkg.packageManager, undefined);
+  assert.equal(result.startCommand, 'npm run dev');
   for (const name of [
     'database/mysql/01-schema.sql',
     'database/mysql/02-seed.sql',
@@ -121,7 +123,10 @@ test('starter creation preserves SQL and excludes optional modules, excludes per
     'cloudflare.config.ts',
     'scaffold',
     'docs/examples.md',
-    'linked-secret'
+    '.github/workflows/presets.yml',
+    'linked-secret',
+    'scripts/lib',
+    'AGENTS.md'
   ]) {
     await assert.rejects(lstat(path.join(target, name)), { code: 'ENOENT' });
   }
@@ -131,6 +136,10 @@ test('starter creation preserves SQL and excludes optional modules, excludes per
   );
   assert.doesNotMatch(env, /VITE_DEMO_ENABLED/);
   assert.equal(result.preset, 'starter');
+  assert.equal(
+    await readFile(path.join(target, '.github/workflows/ci.yml'), 'utf8'),
+    '# Application CI'
+  );
   assert.equal(pkg.scripts['dev:demo'], undefined);
   assert.match(env, /VITE_API_URL=https:\/\/api.example.com\n/);
   assert.doesNotMatch(env, /PRIVATE_TOKEN/);
@@ -148,10 +157,15 @@ test('demo creation prints the real demo command, custom demo API uses the confi
     templateDir: source,
     demo: true
   });
-  assert.equal(result.startCommand, 'pnpm dev:demo');
+  assert.equal(result.startCommand, 'npm run dev:demo');
+  await assert.rejects(
+    lstat(path.join(result.directory, '.github/workflows/presets.yml')),
+    { code: 'ENOENT' }
+  );
   const demoPackage = JSON.parse(
     await readFile(path.join(result.directory, 'package.json'))
   );
+  assert.equal(demoPackage.packageManager, undefined);
   assert.equal(demoPackage.scripts['update:presets'], undefined);
   assert.equal(demoPackage.scripts['check:presets'], undefined);
   assert.match(
@@ -168,7 +182,7 @@ test('demo creation prints the real demo command, custom demo API uses the confi
     demo: true,
     apiURL: 'http://localhost:9000'
   });
-  assert.equal(custom.startCommand, 'pnpm dev');
+  assert.equal(custom.startCommand, 'npm run dev');
   assert.match(
     await readFile(
       path.join(custom.directory, '.env.development.local'),
@@ -280,7 +294,7 @@ test('worker preset includes only core frontend and independent backend', async 
     preset: 'worker'
   });
   assert.equal(result.preset, 'worker');
-  assert.equal(result.startCommand, 'pnpm dev');
+  assert.equal(result.startCommand, 'npm run dev');
   assert.ok(
     (
       await lstat(path.join(result.directory, 'workers/api/src/index.mjs'))
@@ -297,6 +311,7 @@ test('worker preset includes only core frontend and independent backend', async 
     await readFile(path.join(result.directory, 'package.json'))
   );
   assert.match(pkg.scripts['check:backend'], /workers\/api/);
+  assert.doesNotMatch(pkg.scripts['check:backend'], /pnpm|npm run|yarn/);
   for (const entry of ['examples', 'deploy', 'scaffold', 'workers/api/.local'])
     await assert.rejects(lstat(path.join(result.directory, entry)), {
       code: 'ENOENT'
@@ -350,6 +365,21 @@ test('CLI flags generate starter by default and accept explicit worker/demo sele
       preset === 'demo'
     );
     assert.match(result.stdout, /初始化完成/);
+    assert.match(result.stdout, /npm install/);
+    assert.match(
+      result.stdout,
+      preset === 'demo' ? /npm run dev:demo/ : /npm run dev/
+    );
+    assert.match(result.stdout, /pnpm.*Yarn/);
+    assert.doesNotMatch(result.stdout, /包管理器版本：|undefined/);
+    const pkg = JSON.parse(
+      await readFile(path.join(directory, 'package.json'), 'utf8')
+    );
+    assert.equal(pkg.packageManager, undefined);
+    assert.equal(
+      (await readdir(path.join(directory, 'scripts'))).includes('lib'),
+      preset === 'demo'
+    );
   }
 });
 
@@ -361,4 +391,33 @@ test('changed source lock requires regeneration and never leaves a project', asy
     /锁文件快照已过期/
   );
   await assert.rejects(lstat(path.join(cwd, 'stale-lock')), { code: 'ENOENT' });
+});
+
+test('all presets ignore legacy package manager pins without changing the source template', async (t) => {
+  const { cwd, source } = await fixture(t);
+  for (const file of ['package.json', 'scaffold/core/package.json']) {
+    const location = path.join(source, file);
+    const pkg = JSON.parse(await readFile(location, 'utf8'));
+    pkg.packageManager = 'pnpm@12.3.4';
+    await writeFile(location, JSON.stringify(pkg));
+  }
+  for (const preset of ['starter', 'worker', 'demo']) {
+    const result = await createProject({
+      projectName: `legacy-${preset}`,
+      cwd,
+      templateDir: source,
+      preset
+    });
+    const pkg = JSON.parse(
+      await readFile(path.join(result.directory, 'package.json'), 'utf8')
+    );
+    assert.equal(pkg.packageManager, undefined);
+    await assert.rejects(lstat(path.join(result.directory, 'AGENTS.md')), {
+      code: 'ENOENT'
+    });
+  }
+  const original = JSON.parse(
+    await readFile(path.join(source, 'package.json'), 'utf8')
+  );
+  assert.equal(original.packageManager, 'pnpm@12.3.4');
 });
