@@ -25,6 +25,9 @@ test('package name, binary, lock metadata and CLI version agree', async () => {
   assert.deepEqual(lock.packages[''].bin, pkg.bin);
   assert.equal(run(['--version']).stdout.trim(), pkg.version);
   assert.match(run(['--help']).stdout, /--demo/);
+  assert.match(run(['--help']).stdout, /--preset/);
+  assert.match(run(['bad', '--preset', 'unknown']).stderr, /模板仅支持/);
+  assert.match(run(['bad', '--preset', 'starter', '--demo']).stderr, /不能/);
 });
 
 test('noninteractive missing name and invalid paths exit unsuccessfully without creating files', async (t) => {

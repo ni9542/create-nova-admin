@@ -10,6 +10,7 @@ import {
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { downloadTemplate } from 'giget';
+import { composePreset, PRESETS, resolvePreset } from './presets.js';
 
 export const TEMPLATE_REPOSITORY = 'github:npora/admin-template';
 
@@ -51,6 +52,9 @@ export function normalizeApiURL(value) {
 
 const excluded = new Set([
   '.git',
+  '.agents',
+  '.codex',
+  '.aws',
   '.idea',
   'node_modules',
   'dist',
@@ -86,7 +90,15 @@ async function validateTemplate(directory) {
     'database/mysql/01-schema.sql',
     'database/mysql/02-seed.sql',
     'build/optional-examples.ts',
-    'scripts/demo.mjs'
+    'scripts/demo.mjs',
+    'scaffold/metadata.json',
+    'scaffold/demo/README.md',
+    'scaffold/core/package.json',
+    'scaffold/core/pnpm-lock.yaml',
+    'scaffold/core/vite.config.ts',
+    'scaffold/core/src/router/extensions.ts',
+    'scaffold/worker/workers/api/src/config/pages.mjs',
+    'scaffold/worker/workers/api/migrations/0002_seed.sql'
   ];
   for (const file of required) {
     try {
@@ -115,12 +127,15 @@ export async function createProject({
   projectName,
   cwd = process.cwd(),
   demo = false,
+  preset,
   apiURL,
   ref = 'main',
   templateDir,
   download = downloadTemplate
 }) {
   validateProjectName(projectName);
+  const selected = resolvePreset(preset, demo);
+  demo = selected === 'demo';
   if (
     !/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(ref) ||
     ref.includes('..') ||
@@ -167,7 +182,8 @@ export async function createProject({
       });
       await copyTemplate(downloaded, prepared);
     }
-    const pkg = await validateTemplate(prepared);
+    const original = await validateTemplate(prepared);
+    const pkg = await composePreset(prepared, selected, original);
     pkg.name = projectName;
     pkg.private = true;
     await writeFile(
@@ -176,7 +192,7 @@ export async function createProject({
     );
     const config = [
       '# 此文件只用于本机开发，不提交版本控制。',
-      `VITE_DEMO_ENABLED=${demo}`,
+      ...(demo ? ['VITE_DEMO_ENABLED=true'] : []),
       ...(!demo || backend
         ? [`VITE_API_URL=${backend || 'http://localhost:8080'}`]
         : []),
@@ -198,6 +214,8 @@ export async function createProject({
       directory: target,
       projectName,
       demo,
+      preset: selected,
+      presetLabel: PRESETS[selected],
       startCommand: demo && !backend ? 'pnpm dev:demo' : 'pnpm dev',
       packageManager: pkg.packageManager
     };

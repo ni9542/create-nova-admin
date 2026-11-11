@@ -1,6 +1,6 @@
 {
   "name": "@niping9542/create-nova-admin",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Npora Admin 后台脚手架生成器：核心模式、独立展示与正式权限 SQL",
   "type": "module",
   "bin": {

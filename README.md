@@ -1,23 +1,36 @@
 # @niping9542/create-nova-admin
 
-创建基于 Vue 3、TypeScript、Element Plus、Pinia 和 Vue Router 的 Npora Admin 后台项目。
+创建 Vue 3 + TypeScript + Element Plus + Pinia 后台脚手架。模板来自 [npora/admin-template](https://github.com/npora/admin-template)，默认 `main`，核心源码只维护一份。
 
-模板来源：[npora/admin-template](https://github.com/npora/admin-template)，默认使用 `main`。脚手架核心、展示页面、测试后端与正式权限 SQL 已分开维护，使用者无需删除目录。
-
-## 环境要求
-
-- Node.js 22.12+。
-- 创建后使用模板 `packageManager` 指定版本的 pnpm 安装和运行项目。
-
-生成器不会自动安装依赖、启动后端、执行 SQL 或部署网站。
-
-## 创建核心脚手架
+## 选择模板
 
 ```sh
-npx @niping9542/create-nova-admin@latest my-admin
+npx @niping9542/create-nova-admin@latest
 ```
 
-也可省略项目名，按提示输入；未交互终端中需要提供名称或使用 `--yes`。
+按提示输入项目名并选择：
+
+| 预设              | 内容                                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `starter`（默认） | 纯净后台，保留登录、布局、用户/部门/角色/菜单管理、权限、公共组件、多语言、主题和正式 SQL |
+| `worker`          | 纯净后台 + 独立 Worker 后端源码与 SQLite 迁移，后端菜单只引用核心页面                     |
+| `demo`            | 完整演示首页与示例页面、测试后端和展示站实现                                              |
+
+默认纯净版不生成 `examples/`、`workers/`、`deploy/`，也不保留相关依赖、构建插件和命令。Worker 版只额外生成后端，无需手动删除示例目录。完整演示需要网络访问测试 API，不使用本地 Mock。
+
+明确指定模板：
+
+```sh
+npx @niping9542/create-nova-admin@latest my-admin --preset starter
+npx @niping9542/create-nova-admin@latest my-worker --preset worker
+npx @niping9542/create-nova-admin@latest my-demo --preset demo
+```
+
+原 `--demo` 兼容为 `--preset demo`，不能与其他预设同时指定。`--yes` 或非交互终端不询问模板，默认 `starter`。
+
+## 启动
+
+需要 Node.js 22.12+（后端检查需 22.13+），使用生成项目 `packageManager` 指定版本的 pnpm。
 
 ```sh
 cd my-admin
@@ -25,83 +38,52 @@ pnpm install
 pnpm dev
 ```
 
-核心模式保留登录、布局、动态路由、权限、用户/部门/角色/菜单管理、公共表格分页、多语言和主题。生成器创建本机配置 `.env.development.local`：
+纯净版与 Worker 版默认代理到 `http://localhost:8080`，先启动自己的后端，或在生成时使用 `--api-url https://api.example.com`，之后也可修改 `.env.development.local`。Worker 版先完成迁移、密钥和账号初始化，见生成的后端说明；生成器不自动创建资源、执行 SQL 或部署。
 
-```dotenv
-VITE_DEMO_ENABLED=false
-VITE_API_URL=http://localhost:8080
-```
+完整演示无自定义 API 时使用生成器打印的 `pnpm dev:demo`；指定 `--api-url` 后使用 `pnpm dev`。API 前缀默认 `/api`，开发代理移除该前缀再转发。生产需要站点 API 转发，响应格式可在 `src/api/protocol/` 适配。
 
-启动自己的后端，或用 `--api-url` 在创建时指定接口地址：
+[完整展示网站](https://admin-demo.npora.workers.dev)：账号 `admin`，密码 `123456`。此账号只用于展示站。
 
-```sh
-npx @niping9542/create-nova-admin@latest my-admin --api-url https://api.example.com
-```
+## 目录与 SQL
 
-默认 API 前缀为 `/api`，开发代理会移除该前缀后转发；生产仍需配置站点 API 转发。不同的后端响应格式在生成项目的 `src/api/protocol/` 适配。
+| 目录                   | 用途                                   |
+| ---------------------- | -------------------------------------- |
+| `src/`                 | 核心后台与权限管理                     |
+| `database/mysql/`      | 所有预设始终保留的正式表结构与基础授权 |
+| `public/`、`build/`    | 静态资源与公共构建配置                 |
+| `scripts/`、`tests/`   | 验证命令与回归测试                     |
+| `docs/`                | 与所选预设匹配的使用和接口说明         |
+| `workers/api/`         | Worker 与 demo 预设的独立后端          |
+| `examples/`、`deploy/` | 仅完整演示预设包含                     |
 
-## 创建完整展示项目
-
-想先体验现有界面和测试接口时：
-
-```sh
-npx @niping9542/create-nova-admin@latest my-demo --demo
-cd my-demo
-pnpm install
-pnpm dev:demo
-```
-
-展示模式加载独立的 `examples/`，通过真实 HTTP 使用测试 API，需要网络，没有内存 Mock。表格任务、表单草稿等页面示例数据仍在演示模块中维护。
-
-展示地址：[Npora Admin 在线体验](https://admin-demo.npora.workers.dev)。账号 `admin`，密码 `123456`。演示账号不代表导入 SQL 后自动存在的账号。
-
-同时指定 `--demo --api-url` 时，生成器启用展示页面并写入自定义接口地址，使用打印的 `pnpm dev` 命令启动。
-
-## 正式 SQL 与项目结构
-
-生成项目完整保留：
-
-| 目录              | 用途                                              |
-| ----------------- | ------------------------------------------------- |
-| `src/`            | 脚手架核心和系统管理                              |
-| `database/mysql/` | 正式权限表与基础角色、菜单、按钮授权              |
-| `examples/`       | 独立演示页面、统计 API 和示例数据，核心构建不加载 |
-| `workers/api/`    | 可选测试后端，普通前端运行不启动或部署它          |
-| `deploy/`         | 可选展示站部署辅助，普通构建无需配置              |
-
-使用自己的数据库时，在空 MySQL 数据库依次导入 `database/mysql/01-schema.sql`、`02-seed.sql`。管理员账号与密码哈希由实际后端初始化；生成器不会连接数据库或执行这些文件。
+在空 MySQL 数据库依次导入 `database/mysql/01-schema.sql`、`02-seed.sql`。正式 SQL 不包含测试账号，管理员及密码哈希由自己的后端初始化，与 Worker SQLite 迁移分开使用。
 
 ## 选项
 
-| 选项                         | 作用                                                      |
-| ---------------------------- | --------------------------------------------------------- |
-| `[project-name]`             | 项目名，只接受单级、小写的 npm 包名，不接受目录路径       |
-| `-y, --yes`                  | 不询问名称，缺省使用 `nova-admin-app`                     |
-| `--demo`                     | 启用展示模式                                              |
-| `--api-url <url>`            | HTTP/HTTPS 后端地址，不包含账号密码或查询参数             |
-| `--ref <ref>`                | 模板分支或标签，默认 `main`；指定的版本须包含新版目录结构 |
-| `--template-dir <directory>` | 使用本地模板，供开发和离线验证；不访问远程仓库            |
-| `--version`                  | 读取当前包版本                                            |
-| `--help`                     | 显示帮助                                                  |
+| 选项                         | 用途                                            |
+| ---------------------------- | ----------------------------------------------- |
+| `[project-name]`             | 小写单级项目名，不接受路径                      |
+| `-y, --yes`                  | 无交互，缺省名称 `nova-admin-app`、缺省纯净版   |
+| `--preset <preset>`          | `starter`、`worker`、`demo`                     |
+| `--demo`                     | `--preset demo` 的快捷方式                      |
+| `--api-url <url>`            | HTTP/HTTPS 后端，不包含账号密码、查询参数或片段 |
+| `--ref <ref>`                | 模板分支/标签，须支持当前预设目录结构           |
+| `--template-dir <directory>` | 使用本地模板，不下载仓库                        |
+| `--version`、`--help`        | 版本和帮助                                      |
 
-目标目录已存在时直接失败，不覆盖、不删除。模板先在临时目录准备和校验，失败不会留下半成品项目；模板的 `.git`、依赖、构建产物、符号链接及本机 `.local` 文件不会复制。
+目标已存在则失败，不覆盖已有内容。模板先在临时目录准备、校验再生成；失败清理本次创建的目录。本机配置、密钥、依赖、符号链接、构建缓存和 Git 历史不会复制。生成器不自动安装项目依赖或启动服务。
 
-## 维护与验证
+## 维护
 
 ```sh
 npm ci
 npm run check
 npm pack --dry-run
+node bin/index.js local-admin --yes --preset starter --template-dir ../admin-template
 ```
 
-使用本地模板验证真实生成结果：
+npm 包只包含生成器和说明；模板创建时获取。根模板的 `scaffold/` 保存少量差异文件，不进入生成结果。依赖变更后由模板维护者执行 `pnpm run update:presets`，防止纯净锁文件过期。
 
-```sh
-node bin/index.js local-admin --template-dir ../admin-template
-```
-
-npm 包只包含 CLI 入口、生成逻辑与说明；模板在创建时单独获取，不把整个后台仓库打进 npm 包。包名保留 `@niping9542/create-nova-admin`，可执行命令统一为 `create-nova-admin`。
-
-修改代码后不会自动更新已发布的 npm 包；发布前需要更新版本并完成检查。本次维护命令不执行发布。
+模板仓库与 CLI 需配套提交和发布；本地修改不会更新已经发布的 npm 包。新预设选项需要在生成器新版发布后才可通过 npm 使用。
 
 许可证声明：MIT。

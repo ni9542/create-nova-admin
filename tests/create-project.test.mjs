@@ -12,6 +12,9 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
   createProject,
   validateProjectName,
@@ -27,7 +30,12 @@ async function fixture(t) {
       name: 'template',
       private: true,
       packageManager: 'pnpm@12.3.4',
-      scripts: { dev: 'vite', 'dev:demo': 'node scripts/demo.mjs' }
+      scripts: {
+        dev: 'vite',
+        'dev:demo': 'node scripts/demo.mjs',
+        'update:presets': 'node scripts/update-presets.mjs',
+        'check:presets': 'node scripts/check-presets.mjs'
+      }
     }),
     'src/main.ts': 'export {};',
     'database/mysql/01-schema.sql': 'CREATE TABLE sys_user (id INT);',
@@ -37,6 +45,32 @@ async function fixture(t) {
     'examples/index.ts': 'export {};',
     'workers/api/src/index.mjs': '// Optional backend',
     'public/favicon.svg': '<svg />',
+    'pnpm-lock.yaml': 'lockfileVersion: 9.0',
+    'scaffold/metadata.json': JSON.stringify({
+      version: 1,
+      sourceLockHash: createHash('sha256')
+        .update('lockfileVersion: 9.0')
+        .digest('hex')
+    }),
+    'docs/api.md': '# API',
+    'scaffold/demo/README.md': '# Full demo',
+    'docs/examples.md': '# Examples',
+    'deploy/cloudflare/index.mjs': '// deploy',
+    'cloudflare.config.ts': '// deployment config',
+    'scaffold/core/package.json': JSON.stringify({
+      name: 'template',
+      private: true,
+      packageManager: 'pnpm@12.3.4',
+      scripts: { dev: 'vite' }
+    }),
+    'scaffold/core/pnpm-lock.yaml': 'lockfileVersion: 9.0',
+    'scaffold/core/vite.config.ts': '// Core only',
+    'scaffold/core/src/router/extensions.ts': '// Empty routes',
+    'scaffold/worker/workers/api/src/config/pages.mjs':
+      '// Core page catalogue',
+    'scaffold/worker/workers/api/migrations/0002_seed.sql':
+      '-- Core permissions',
+
     '.env.development.local': 'PRIVATE_TOKEN=do-not-copy',
     'workers/api/.local/credentials.json': 'do-not-copy',
     'node_modules/private.txt': 'do-not-copy',
@@ -55,7 +89,7 @@ async function fixture(t) {
   return { cwd, source };
 }
 
-test('core creation preserves SQL and optional modules, excludes personal files and writes fresh configuration', async (t) => {
+test('starter creation preserves SQL and excludes optional modules, excludes personal files and writes fresh configuration', async (t) => {
   const { cwd, source } = await fixture(t);
   const result = await createProject({
     projectName: 'my-admin',
@@ -72,8 +106,6 @@ test('core creation preserves SQL and optional modules, excludes personal files 
   for (const name of [
     'database/mysql/01-schema.sql',
     'database/mysql/02-seed.sql',
-    'examples/index.ts',
-    'workers/api/src/index.mjs',
     'public/favicon.svg'
   ]) {
     assert.ok((await lstat(path.join(target, name))).isFile());
@@ -83,7 +115,12 @@ test('core creation preserves SQL and optional modules, excludes personal files 
     '.git',
     'dist',
     '.cloudflare',
-    'workers/api/.local',
+    'workers',
+    'examples',
+    'deploy',
+    'cloudflare.config.ts',
+    'scaffold',
+    'docs/examples.md',
     'linked-secret'
   ]) {
     await assert.rejects(lstat(path.join(target, name)), { code: 'ENOENT' });
@@ -92,7 +129,9 @@ test('core creation preserves SQL and optional modules, excludes personal files 
     path.join(target, '.env.development.local'),
     'utf8'
   );
-  assert.match(env, /VITE_DEMO_ENABLED=false/);
+  assert.doesNotMatch(env, /VITE_DEMO_ENABLED/);
+  assert.equal(result.preset, 'starter');
+  assert.equal(pkg.scripts['dev:demo'], undefined);
   assert.match(env, /VITE_API_URL=https:\/\/api.example.com\n/);
   assert.doesNotMatch(env, /PRIVATE_TOKEN/);
   assert.match(
@@ -110,6 +149,11 @@ test('demo creation prints the real demo command, custom demo API uses the confi
     demo: true
   });
   assert.equal(result.startCommand, 'pnpm dev:demo');
+  const demoPackage = JSON.parse(
+    await readFile(path.join(result.directory, 'package.json'))
+  );
+  assert.equal(demoPackage.scripts['update:presets'], undefined);
+  assert.equal(demoPackage.scripts['check:presets'], undefined);
   assert.match(
     await readFile(
       path.join(result.directory, '.env.development.local'),
@@ -225,4 +269,96 @@ test('project and API inputs reject traversal, shell text and credentials', () =
   ]) {
     assert.throws(() => normalizeApiURL(value));
   }
+});
+
+test('worker preset includes only core frontend and independent backend', async (t) => {
+  const { cwd, source } = await fixture(t);
+  const result = await createProject({
+    projectName: 'with-worker',
+    cwd,
+    templateDir: source,
+    preset: 'worker'
+  });
+  assert.equal(result.preset, 'worker');
+  assert.equal(result.startCommand, 'pnpm dev');
+  assert.ok(
+    (
+      await lstat(path.join(result.directory, 'workers/api/src/index.mjs'))
+    ).isFile()
+  );
+  assert.equal(
+    await readFile(
+      path.join(result.directory, 'workers/api/src/config/pages.mjs'),
+      'utf8'
+    ),
+    '// Core page catalogue'
+  );
+  const pkg = JSON.parse(
+    await readFile(path.join(result.directory, 'package.json'))
+  );
+  assert.match(pkg.scripts['check:backend'], /workers\/api/);
+  for (const entry of ['examples', 'deploy', 'scaffold', 'workers/api/.local'])
+    await assert.rejects(lstat(path.join(result.directory, entry)), {
+      code: 'ENOENT'
+    });
+});
+
+test('presets reject unknown selections, conflicting alias and stale snapshots before creating a project', async (t) => {
+  const { cwd, source } = await fixture(t);
+  for (const options of [{ preset: 'other' }, { preset: 'worker', demo: true }])
+    await assert.rejects(
+      createProject({
+        projectName: 'invalid',
+        cwd,
+        templateDir: source,
+        ...options
+      }),
+      /模板|--demo/
+    );
+  await writeFile(
+    path.join(source, 'scaffold/core/package.json'),
+    JSON.stringify({ scripts: { dev: 'outdated' } })
+  );
+  await assert.rejects(
+    createProject({ projectName: 'stale', cwd, templateDir: source }),
+    /快照已过期/
+  );
+  await assert.rejects(lstat(path.join(cwd, 'stale')), { code: 'ENOENT' });
+});
+
+test('CLI flags generate starter by default and accept explicit worker/demo selections', async (t) => {
+  const { cwd, source } = await fixture(t);
+  const cli = fileURLToPath(new URL('../bin/index.js', import.meta.url));
+  for (const preset of ['starter', 'worker', 'demo']) {
+    const args = [
+      cli,
+      `cli-${preset}`,
+      '--yes',
+      '--template-dir',
+      source,
+      ...(preset === 'starter' ? [] : ['--preset', preset])
+    ];
+    const result = spawnSync(process.execPath, args, { cwd, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const directory = path.join(cwd, `cli-${preset}`);
+    assert.equal(
+      (await readdir(directory)).includes('workers'),
+      preset !== 'starter'
+    );
+    assert.equal(
+      (await readdir(directory)).includes('examples'),
+      preset === 'demo'
+    );
+    assert.match(result.stdout, /初始化完成/);
+  }
+});
+
+test('changed source lock requires regeneration and never leaves a project', async (t) => {
+  const { cwd, source } = await fixture(t);
+  await writeFile(path.join(source, 'pnpm-lock.yaml'), 'changed');
+  await assert.rejects(
+    createProject({ projectName: 'stale-lock', cwd, templateDir: source }),
+    /锁文件快照已过期/
+  );
+  await assert.rejects(lstat(path.join(cwd, 'stale-lock')), { code: 'ENOENT' });
 });
