@@ -271,3 +271,10 @@ npm view @niping9542/create-nova-admin version dist-tags --json --registry=https
 ## 许可证
 
 MIT
+
+## 变更记录与许可
+
+- [变更记录](CHANGELOG.md)：生成器兼容变化及发布约定。
+- [MIT 许可证](LICENSE)：生成器自身源码许可；第三方依赖遵循各自许可证。
+
+生成项目保留后台模板的 `LICENSE`、`CHANGELOG.md` 和 `docs/new-business-page.md`，其中说明新增业务页面以及管理表单的开发约定。

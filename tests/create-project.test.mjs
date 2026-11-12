@@ -46,6 +46,9 @@ async function fixture(t) {
     'examples/index.ts': 'export {};',
     'workers/api/src/index.mjs': '// Optional backend',
     'public/favicon.svg': '<svg />',
+    LICENSE: 'MIT License',
+    'CHANGELOG.md': '# Template changes',
+    'scaffold/core/docs/new-business-page.md': '# Add a page',
     'pnpm-lock.yaml': 'lockfileVersion: 9.0',
     'scaffold/metadata.json': JSON.stringify({
       version: 1,
@@ -108,7 +111,10 @@ test('starter creation preserves SQL and excludes optional modules, excludes per
   for (const name of [
     'database/mysql/01-schema.sql',
     'database/mysql/02-seed.sql',
-    'public/favicon.svg'
+    'public/favicon.svg',
+    'LICENSE',
+    'CHANGELOG.md',
+    'docs/new-business-page.md'
   ]) {
     assert.ok((await lstat(path.join(target, name))).isFile());
   }
