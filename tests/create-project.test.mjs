@@ -49,11 +49,21 @@ async function fixture(t) {
     LICENSE: 'MIT License',
     'CHANGELOG.md': '# Template changes',
     'scaffold/core/docs/new-business-page.md': '# Add a page',
-    'pnpm-lock.yaml': 'lockfileVersion: 9.0',
+    'package-lock.json': JSON.stringify({
+      name: 'template',
+      lockfileVersion: 3,
+      packages: { '': { name: 'template' } }
+    }),
     'scaffold/metadata.json': JSON.stringify({
-      version: 1,
+      version: 2,
       sourceLockHash: createHash('sha256')
-        .update('lockfileVersion: 9.0')
+        .update(
+          JSON.stringify({
+            name: 'template',
+            lockfileVersion: 3,
+            packages: { '': { name: 'template' } }
+          })
+        )
         .digest('hex')
     }),
     'docs/api.md': '# API',
@@ -68,7 +78,11 @@ async function fixture(t) {
       private: true,
       scripts: { dev: 'vite' }
     }),
-    'scaffold/core/pnpm-lock.yaml': 'lockfileVersion: 9.0',
+    'scaffold/core/package-lock.json': JSON.stringify({
+      name: 'template',
+      lockfileVersion: 3,
+      packages: { '': { name: 'template' } }
+    }),
     'scaffold/core/vite.config.ts': '// Core only',
     'scaffold/core/src/router/extensions.ts': '// Empty routes',
     'scaffold/worker/workers/api/src/config/pages.mjs':
@@ -382,6 +396,11 @@ test('CLI flags generate starter by default and accept explicit worker/demo sele
       await readFile(path.join(directory, 'package.json'), 'utf8')
     );
     assert.equal(pkg.packageManager, undefined);
+    const lock = JSON.parse(
+      await readFile(path.join(directory, 'package-lock.json'), 'utf8')
+    );
+    assert.equal(lock.name, pkg.name);
+    assert.equal(lock.packages[''].name, pkg.name);
     assert.equal(
       (await readdir(path.join(directory, 'scripts'))).includes('lib'),
       preset === 'demo'
@@ -391,7 +410,7 @@ test('CLI flags generate starter by default and accept explicit worker/demo sele
 
 test('changed source lock requires regeneration and never leaves a project', async (t) => {
   const { cwd, source } = await fixture(t);
-  await writeFile(path.join(source, 'pnpm-lock.yaml'), 'changed');
+  await writeFile(path.join(source, 'package-lock.json'), 'changed');
   await assert.rejects(
     createProject({ projectName: 'stale-lock', cwd, templateDir: source }),
     /锁文件快照已过期/
@@ -426,4 +445,29 @@ test('all presets ignore legacy package manager pins without changing the source
     await readFile(path.join(source, 'package.json'), 'utf8')
   );
   assert.equal(original.packageManager, 'pnpm@12.3.4');
+});
+
+test('legacy pnpm snapshot remains readable without pinning the generated manager', async (t) => {
+  const { cwd, source } = await fixture(t);
+  await rm(path.join(source, 'package-lock.json'));
+  await rm(path.join(source, 'scaffold/core/package-lock.json'));
+  const content = 'lockfileVersion: 9.0';
+  await writeFile(path.join(source, 'pnpm-lock.yaml'), content);
+  await writeFile(path.join(source, 'scaffold/core/pnpm-lock.yaml'), content);
+  await writeFile(
+    path.join(source, 'scaffold/metadata.json'),
+    JSON.stringify({
+      version: 1,
+      sourceLockHash: createHash('sha256').update(content).digest('hex')
+    })
+  );
+  const result = await createProject({
+    projectName: 'legacy-snapshot',
+    cwd,
+    templateDir: source
+  });
+  const pkg = JSON.parse(
+    await readFile(path.join(result.directory, 'package.json'), 'utf8')
+  );
+  assert.equal(pkg.packageManager, undefined);
 });

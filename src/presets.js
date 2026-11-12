@@ -37,10 +37,14 @@ export async function composePreset(directory, preset, original) {
     const metadata = JSON.parse(
       await readFile(path.join(overlays, 'metadata.json'), 'utf8')
     );
+    if (![1, 2].includes(metadata.version))
+      throw new Error('不支持的模板锁文件快照版本。');
+    const lockfile =
+      metadata.version === 2 ? 'package-lock.json' : 'pnpm-lock.yaml';
     const sourceLockHash = createHash('sha256')
-      .update(await readFile(path.join(directory, 'pnpm-lock.yaml')))
+      .update(await readFile(path.join(directory, lockfile)))
       .digest('hex');
-    if (metadata.version !== 1 || metadata.sourceLockHash !== sourceLockHash)
+    if (metadata.sourceLockHash !== sourceLockHash)
       throw new Error(
         '模板的纯净版锁文件快照已过期，请维护者运行 npm run update:presets。'
       );

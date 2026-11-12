@@ -61,11 +61,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: admin-template/pnpm-lock.yaml
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
       - name: Install generator dependencies
         run: npm ci --prefix ../create-nova-admin
       - name: Install template dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            pnpm install --frozen-lockfile
+          fi
       - name: Generate, install and check all three presets
-        run: node scripts/check-presets.mjs ../create-nova-admin --install --manager=${{ matrix.manager }}
+        run: |
+          if [ -f package-lock.json ]; then
+            node scripts/check-presets.mjs ../create-nova-admin --install --manager=${{ matrix.manager }}
+          else
+            node scripts/check-presets.mjs ../create-nova-admin --install --manager=pnpm
+          fi

@@ -113,7 +113,6 @@ async function validateTemplate(directory) {
     'scaffold/metadata.json',
     'scaffold/demo/README.md',
     'scaffold/core/package.json',
-    'scaffold/core/pnpm-lock.yaml',
     'scaffold/core/vite.config.ts',
     'scaffold/core/src/router/extensions.ts',
     'scaffold/worker/workers/api/src/config/pages.mjs',
@@ -128,6 +127,15 @@ async function validateTemplate(directory) {
         `模板缺少 ${file}，请使用已完成核心/展示分离的新版本模板。`
       );
     }
+  }
+  const metadata = JSON.parse(
+    await readFile(path.join(directory, 'scaffold/metadata.json'), 'utf8')
+  );
+  const lockfile =
+    metadata.version === 2 ? 'package-lock.json' : 'pnpm-lock.yaml';
+  for (const file of [lockfile, `scaffold/core/${lockfile}`]) {
+    if (!(await lstat(path.join(directory, file))).isFile())
+      throw new Error(`模板缺少 ${file}。`);
   }
   const pkg = JSON.parse(
     await readFile(path.join(directory, 'package.json'), 'utf8')
@@ -205,6 +213,16 @@ export async function createProject({
       path.join(prepared, 'package.json'),
       `${JSON.stringify(pkg, null, 2)}\n`
     );
+    // npm 锁文件的项目名称同步为生成项目名称，保留完整依赖解析结果。
+    try {
+      const lockPath = path.join(prepared, 'package-lock.json');
+      const lock = JSON.parse(await readFile(lockPath, 'utf8'));
+      lock.name = projectName;
+      if (lock.packages?.['']) lock.packages[''].name = projectName;
+      await writeFile(lockPath, JSON.stringify(lock, null, 2) + '\n');
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
     const config = [
       '# 此文件只用于本机开发，不提交版本控制。',
       ...(demo ? ['VITE_DEMO_ENABLED=true'] : []),

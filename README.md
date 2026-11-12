@@ -18,7 +18,7 @@ npm 包名：`@niping9542/create-nova-admin`；[生成器源码](https://github.
 
 - 创建项目和开发前端：Node.js 22.12.0 或更高版本。
 - 检查 Worker 后端：Node.js 22.13.0 或更高版本。
-- 生成项目不指定 `packageManager`，可使用 npm、pnpm 或 Yarn。以下以 npm 为例；pnpm 锁文件仅供选择 pnpm 的使用者使用，其他工具会生成自己的锁文件，无需先删除 pnpm 配置。生成器自身使用 npm 锁文件维护依赖，与生成项目使用哪种包管理器无关。
+- 生成项目不指定 `packageManager`，可使用 npm、pnpm 或 Yarn。以下以 npm 为例；模板默认使用 npm 和 package-lock.json，其他工具可生成自己的锁文件，无需先删除文件。生成器自身使用 npm 锁文件维护依赖，与生成项目使用哪种包管理器无关。
 - 在线创建需要能够访问 npm 和 GitHub；完整演示的默认测试 API 也需要网络。
 
 ## 创建项目
@@ -229,13 +229,15 @@ node bin/index.js local-admin --yes --preset starter --template-dir ../admin-tem
 
 ### 自动检查
 
-每次推送或提交 PR，GitHub Actions 会在 Node.js 22、24 上运行生成器检查和 npm 打包预览，并联合 `admin-template` 的 `main` 分支创建三个真实项目。三个预设分别使用 npm、pnpm 独立安装依赖并执行实际脚本，验证页面、文档链接、类型、回归和生产构建；pnpm 验证模板锁文件，Worker 版同时检查后端。CI 中的 pnpm 版本只用于维护验收，不写入生成项目，也不限制使用者选择工具。
+每次推送或提交 PR，GitHub Actions 会在 Node.js 22、24 上运行生成器检查和 npm 打包预览，并联合 `admin-template` 的 `main` 分支创建三个真实项目。三个预设分别使用 npm、pnpm 独立安装依赖并执行实际脚本，验证页面、文档链接、类型、回归和生产构建；npm ci 验证模板锁文件，Worker 版同时检查后端。CI 中的 pnpm 版本只用于维护验收，不写入生成项目，也不限制使用者选择工具。
 
 后台模板仓库也会用自身改动验证生成器的 `main` 分支，因此修改任意一边都能检查两者是否兼容。首次启用时，先推送生成器的配套改动，再推送 `admin-template`，让模板端使用到已经支持新检查流程的生成器。
 
 这些工作流只有检查权限，不发布 npm，也不部署网站。生成项目保留应用检查流程，跨仓库维护流程不会复制进去。
 
 ### 更新模板与发布
+
+模板维护和 CI 以 npm 为准。当前 npm 锁文件快照为版本 2；生成器保留读取旧版 pnpm 快照的兼容能力，但新版模板需使用支持 npm 快照的生成器。
 
 本次配套版本允许模板不再提供 `packageManager` 字段。更新时需要同步推送两个仓库，并手动发布包含兼容修改的生成器新版本；旧生成器仍会校验 pnpm 字段，不能只更新模板仓库。
 
@@ -278,3 +280,7 @@ MIT
 - [MIT 许可证](LICENSE)：生成器自身源码许可；第三方依赖遵循各自许可证。
 
 生成项目保留后台模板的 `LICENSE`、`CHANGELOG.md` 和 `docs/new-business-page.md`，其中说明新增业务页面以及管理表单的开发约定。
+
+### npm 基准迁移顺序
+
+已发布的 1.0.8 不支持 npm 版模板快照。先验证并手动发布支持 npm 快照的 1.0.9，再将 npm 版模板切换到默认分支。过渡期间，生成器 CI 对旧版模板使用其 pnpm 锁文件验收；新版模板以 npm ci 为准，并补充 pnpm 兼容验收。
